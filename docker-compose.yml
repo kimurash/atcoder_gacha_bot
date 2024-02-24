@@ -1,0 +1,10 @@
+services:
+  atcoder-gacha-bot:
+    build:
+      context: .
+    image: atcoder-gacha-bot:0.1.0
+    container_name: atcoder-gacha-bot
+    volumes:
+      - type: bind
+        source: ./src
+        target: /app/src

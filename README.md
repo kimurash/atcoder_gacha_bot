@@ -1,3 +1,3 @@
 # atcoder-gacha-bot
 
-Describe your project here.
+AtCoderの過去問からランダムに出題してくれるSlack Bot
