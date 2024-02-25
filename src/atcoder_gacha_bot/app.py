@@ -1,4 +1,5 @@
 import os
+import re
 from random import choice
 
 import requests
@@ -33,7 +34,8 @@ def handle_msg_hello(msg, say):
 def handle_gacha_cmd(args):
     args.ack()
 
-    problem = select_problem()
+    option = args.command['text']
+    problem = select_problem(option)
     if problem is None:
         args.say("問題の取得に失敗しました")
         return
@@ -75,7 +77,7 @@ def handle_gacha_cmd(args):
                 'type': 'section',
                 'text': {
                     'type': 'mrkdwn',
-                    'text': f"<{url}|View problem page>"
+                    'text': f"<{url}|Visit problem page>"
                 }
             }
         ],
@@ -83,15 +85,31 @@ def handle_gacha_cmd(args):
     )
 
 
-def select_problem():
+def select_problem(option: str):
     response = requests.get(os.getenv('AP_PROBLEM_URL'))
     if not check_status_code(response):
         return None
 
     prob_list = response.json()
-    rand_prob = choice(prob_list)
+    cand_prob = filter_problem(prob_list, option)
+    rand_prob = choice(cand_prob)
+    
     return rand_prob
 
+def filter_problem(prob_list: list, option: str):
+    if len(option) != 1:
+        return prob_list
+    
+    if not re.match(r'^[a-gA-G]$', option):
+        return prob_list
+    
+    cand_prob = list()
+    for prob in prob_list:
+        if 'problem_index' in prob:
+            if prob['problem_index'] == option:
+                cand_prob.append(prob)
+
+    return cand_prob
 
 def get_problem_diff(prob_id: str):
     response = requests.get(os.getenv('AP_DIFF_URL'))
