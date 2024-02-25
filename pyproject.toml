@@ -1,7 +1,7 @@
 [project]
 name = "atcoder-gacha-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Slack Bot that randomly asks problems from AtCoder Problems"
 authors = [
     { name = "shunsei", email = "" }
 ]
@@ -10,6 +10,8 @@ dependencies = [
     "ipykernel>=6.27.1",
     "requests>=2.31.0",
     "slack_bolt>=1.18.1",
+    "schedule>=1.2.1",
+    "pytz>=2024.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
