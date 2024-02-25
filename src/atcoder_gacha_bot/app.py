@@ -3,6 +3,7 @@ import re
 from random import choice
 
 import requests
+
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 from slack_bolt import App
@@ -14,19 +15,21 @@ load_dotenv(find_dotenv())
 app = App(token=os.getenv('SLACK_BOT_TOKEN'))
 
 @app.message('hello')
-def handle_msg_hello(msg, say):
+def handle_hello_msg(ack, message, say):
+    ack()
+
     say(
         blocks=[
             {
                 'type': 'section',
                 'text': {
                     'type': 'mrkdwn',
-                    'text': f"Hey there <@{msg['user']}>!"
+                    'text': f"Hey there <@{message['user']}>!"
                 }
             }
         ],
         # NOTE:text引数は常に指定が推奨
-        text=f"Hey there <@{msg['user']}>!"
+        text=f"Hey there <@{message['user']}>!"
     )
 
 
@@ -37,57 +40,89 @@ def handle_gacha_cmd(args):
     option = args.command['text']
     problem = select_problem(option)
     if problem is None:
-        args.say("問題の取得に失敗しました")
         return
 
     diff = get_problem_diff(problem['id'])
 
+    args.say(
+        blocks=make_msg_block(problem, diff),
+        text=problem['title']
+    )
+
+
+def post_daily_problem():
+    problem = select_problem()
+    if problem is None:
+        return
+    
+    diff = get_problem_diff(problem['id'])
+
+    msg_block = make_msg_block(problem, diff)
+    msg_block = [
+        {
+            'type': 'section',
+            'text': {
+                'type': 'plain_text',
+                'text': f'今日の一問'
+            }
+        }
+    ] + msg_block
+
+    app.client.chat_postMessage(
+        channel=os.getenv('CHANNEL_ID'),
+        blocks=msg_block,
+        text=problem['title']
+    )
+
+
+def make_msg_block(problem: dict, diff: str):
     title = f"{problem['contest_id'].upper()} / {problem['title']}"
     point = problem['point']
     if point is not None:
         point = int(point)
     url = f"https://atcoder.jp/contests/{problem['contest_id']}/tasks/{problem['id']}"
-    
-    args.say(
-        blocks=[
-            {
-                'type': 'header',
-                'text': {
-                    'type': 'plain_text',
-                    'text': title,
-                }
-            },
-            {
-                "type": "divider"
-            },
-            {
-                'type': 'section',
-                'fields': [
-                    {
-                        'type': 'mrkdwn',
-                        'text': f'*point:*\n{point}'
-                    },
-                    {
-                        'type': 'mrkdwn',
-                        'text': f'*difficulty:*\n{diff}'
-                    }
-                ]
-            },
-            {
-                'type': 'section',
-                'text': {
-                    'type': 'mrkdwn',
-                    'text': f"<{url}|Visit problem page>"
-                }
+
+    return [
+        {
+            'type': 'header',
+            'text': {
+                'type': 'plain_text',
+                'text': title,
             }
-        ],
-        text=problem['title']
-    )
+        },
+        {
+            "type": "divider"
+        },
+        {
+            'type': 'section',
+            'fields': [
+                {
+                    'type': 'mrkdwn',
+                    'text': f'*point:*\n{point}'
+                },
+                {
+                    'type': 'mrkdwn',
+                    'text': f'*difficulty:*\n{diff}'
+                }
+            ]
+        },
+        {
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': f"<{url}|Visit problem page>"
+            }
+        }
+    ]
 
 
-def select_problem(option: str):
+def select_problem(option=''):
     response = requests.get(os.getenv('AP_PROBLEM_URL'))
     if not check_status_code(response):
+        app.client.chat_postMessage(
+            channel=os.getenv('CHANNEL_ID'),
+            text="問題の取得に失敗しました"
+        )
         return None
 
     prob_list = response.json()
@@ -95,6 +130,7 @@ def select_problem(option: str):
     rand_prob = choice(cand_prob)
     
     return rand_prob
+
 
 def filter_problem(prob_list: list, option: str):
     if len(option) != 1:
@@ -111,6 +147,7 @@ def filter_problem(prob_list: list, option: str):
 
     return cand_prob
 
+
 def get_problem_diff(prob_id: str):
     response = requests.get(os.getenv('AP_DIFF_URL'))
     if not check_status_code(response):
@@ -122,6 +159,7 @@ def get_problem_diff(prob_id: str):
         return est_diff.get('difficulty', 'unknown')
     else:
         return None
+
 
 def check_status_code(response: requests.Response):
     match response.status_code:
