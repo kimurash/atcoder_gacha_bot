@@ -56,17 +56,25 @@ def post_daily_problem():
         return
     
     diff = get_problem_diff(problem['id'])
-
     msg_block = make_msg_block(problem, diff)
-    msg_block = [
-        {
-            'type': 'section',
-            'text': {
-                'type': 'plain_text',
-                'text': f'今日の一問'
+
+    title_txt_path = (
+        os.path.join(
+            os.path.dirname(__file__),
+            'daily_post_title.txt'
+        )
+    )
+    with open(title_txt_path, 'r') as f:
+        daily_post_title = f.read()
+        msg_block = [
+            {
+                'type': 'section',
+                'text': {
+                    'type': 'plain_text',
+                    'text': daily_post_title,
+                }
             }
-        }
-    ] + msg_block
+        ] + msg_block
 
     app.client.chat_postMessage(
         channel=os.getenv('CHANNEL_ID'),
